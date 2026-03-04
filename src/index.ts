@@ -44,13 +44,7 @@ const opts = program.opts<{
   apiKey?: string;
 }>();
 
-const apiKey = opts.apiKey ?? process.env.MARKETCHECK_API_KEY;
-if (!apiKey) {
-  console.error('Error: MarketCheck API key required. Set MARKETCHECK_API_KEY in .env or pass --api-key.');
-  process.exit(1);
-}
-
-// --- Input validation ---
+// --- Input validation (runs before API key check so field errors surface first) ---
 function parseIntArg(val: string, flag: string): number {
   const n = parseInt(val, 10);
   if (Number.isNaN(n)) {
@@ -86,6 +80,13 @@ if (ratePerMile < 0) { console.error('Error: --rate must be 0 or greater.'); pro
 // ZIP code basic format check
 if (!/^\d{5}(-\d{4})?$/.test(opts.zip)) {
   console.error(`Error: --zip must be a 5-digit US ZIP code, got "${opts.zip}".`);
+  process.exit(1);
+}
+
+// API key check (after field validation so format errors surface first)
+const apiKey = opts.apiKey ?? process.env.MARKETCHECK_API_KEY;
+if (!apiKey) {
+  console.error('Error: MarketCheck API key required. Set MARKETCHECK_API_KEY in .env or pass --api-key.');
   process.exit(1);
 }
 
