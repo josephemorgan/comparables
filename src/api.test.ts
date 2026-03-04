@@ -6,6 +6,12 @@ import type { SearchParams } from './types.js';
 vi.mock('axios');
 const mockedGet = vi.mocked(axios.get);
 
+vi.mocked(axios.isAxiosError).mockImplementation((err): err is import('axios').AxiosError => {
+  return err != null && typeof err === 'object' && 'response' in err;
+});
+
+beforeEach(() => vi.clearAllMocks());
+
 const params: SearchParams = {
   year: 2019,
   make: 'Honda',
@@ -41,11 +47,15 @@ describe('decodeVin', () => {
     mockedGet.mockRejectedValueOnce({ response: { status: 404, data: { message: 'Not found' } } });
     await expect(decodeVin('BADINPUT', 'test-key')).rejects.toThrow('VIN not found');
   });
+
+  it('rethrows non-Axios errors as-is', async () => {
+    const networkError = new Error('Network Error');
+    mockedGet.mockRejectedValueOnce(networkError);
+    await expect(decodeVin('1HGCV1F30KA123456', 'test-key')).rejects.toThrow('Network Error');
+  });
 });
 
 describe('searchInventory', () => {
-  beforeEach(() => vi.clearAllMocks());
-
   it('calls MarketCheck with correct query params and returns listings', async () => {
     mockedGet.mockResolvedValueOnce({
       data: {
@@ -95,5 +105,23 @@ describe('searchInventory', () => {
       response: { status: 401, data: { message: 'Unauthorized' } },
     });
     await expect(searchInventory(params)).rejects.toThrow('MarketCheck API error 401');
+  });
+
+  it('rethrows non-Axios errors as-is', async () => {
+    const networkError = new Error('ECONNREFUSED');
+    mockedGet.mockRejectedValueOnce(networkError);
+    await expect(searchInventory(params)).rejects.toThrow('ECONNREFUSED');
+  });
+
+  it('clamps mileage_above to 0 for low-mileage vehicles', async () => {
+    mockedGet.mockResolvedValueOnce({ data: { num_found: 0, listings: [] } });
+    const lowMileageParams = { ...params, mileage: 10000, mileageRange: 25000 };
+    await searchInventory(lowMileageParams);
+    expect(mockedGet).toHaveBeenCalledWith(
+      'https://mc-api.marketcheck.com/v2/search/car/active',
+      expect.objectContaining({
+        params: expect.objectContaining({ mileage_above: 0, mileage_below: 35000 }),
+      }),
+    );
   });
 });

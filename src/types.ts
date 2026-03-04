@@ -43,7 +43,7 @@ export interface VinDecodeResponse {
   year: string;
   make: string;
   model: string;
-  trim: string;
+  trim?: string;
 }
 
 export interface ScoredListing extends RawListing {

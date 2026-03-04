@@ -9,16 +9,16 @@ export async function decodeVin(vin: string, apiKey: string): Promise<VehicleSpe
       `${BASE}/decode/car/${vin}/specs`,
       { params: { api_key: apiKey } },
     );
-    return {
-      year: parseInt(data.year, 10),
-      make: data.make,
-      model: data.model,
-      trim: data.trim ?? '',
-    };
+    const year = parseInt(data.year, 10);
+    if (isNaN(year)) throw new Error(`MarketCheck returned invalid year: "${data.year}"`);
+    return { year, make: data.make, model: data.model, trim: data.trim ?? '' };
   } catch (err: unknown) {
-    const status = (err as { response?: { status?: number } }).response?.status;
-    if (status === 404) throw new Error(`VIN not found: ${vin}`);
-    throw new Error(`MarketCheck API error ${status ?? 'unknown'} decoding VIN`);
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      if (status === 404) throw new Error(`VIN not found: ${vin}`);
+      throw new Error(`MarketCheck API error ${status ?? 'unknown'} decoding VIN`);
+    }
+    throw err;
   }
 }
 
@@ -48,8 +48,12 @@ export async function searchInventory(params: SearchParams): Promise<RawListing[
     );
     return data.listings ?? [];
   } catch (err: unknown) {
-    const status = (err as { response?: { status?: number } }).response?.status;
-    const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-    throw new Error(`MarketCheck API error ${status ?? 'unknown'}: ${message ?? 'unknown error'}`);
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      const message = err.response?.data?.message as string | undefined;
+      if (status === 404) throw new Error(`MarketCheck search endpoint not found (404) — check API version`);
+      throw new Error(`MarketCheck API error ${status ?? 'unknown'}: ${message ?? 'unknown error'}`);
+    }
+    throw err;
   }
 }
