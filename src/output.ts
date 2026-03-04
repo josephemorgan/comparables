@@ -28,6 +28,9 @@ export function buildCsvRows(listings: ScoredListing[]): string[][] {
 
 export function computeSummary(listings: ScoredListing[], top: number) {
   const topN = listings.slice(0, Math.min(top, listings.length));
+  if (topN.length === 0) {
+    return { average: 0, min: 0, max: 0, count: 0 };
+  }
   const prices = topN.map((l) => l.adjustedPrice);
   const average = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
   return {
@@ -68,7 +71,7 @@ export function printTable(listings: ScoredListing[]): void {
 
 export function writeCsv(listings: ScoredListing[], filePath: string): void {
   const rows = buildCsvRows(listings);
-  const csv = rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+  const csv = rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\r\n');
   writeFileSync(filePath, csv, 'utf8');
 }
 

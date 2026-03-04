@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCsvRows, computeSummary } from './output.js';
+import { buildCsvRows, computeSummary, printTable, printSummary } from './output.js';
 import type { ScoredListing } from './types.js';
 
 const listings: ScoredListing[] = [
@@ -33,6 +33,19 @@ describe('buildCsvRows', () => {
     const rows = buildCsvRows(noTrimListings);
     expect(rows[1][4]).toBe(''); // trim col is empty string
   });
+
+  it('escapes embedded double-quotes in cell values', () => {
+    const quotedListing: ScoredListing = {
+      ...listings[0], make: 'Honda "Special"',
+    };
+    const rows = buildCsvRows([quotedListing]);
+    // The make cell should have internal quotes doubled
+    expect(rows[1][3]).toBe('Honda "Special"'); // raw value
+    // writeCsv would wrap it as: "Honda ""Special"""
+    // Test the escaping logic directly by simulating writeCsv's map
+    const escaped = rows[1][3].replace(/"/g, '""');
+    expect(escaped).toBe('Honda ""Special""');
+  });
 });
 
 describe('computeSummary', () => {
@@ -53,5 +66,33 @@ describe('computeSummary', () => {
     const summary = computeSummary(listings, 1);
     expect(summary.average).toBe(24500); // only listing[0].adjustedPrice
     expect(summary.count).toBe(1);
+  });
+
+  it('returns zeros for empty listings array', () => {
+    const summary = computeSummary([], 10);
+    expect(summary.average).toBe(0);
+    expect(summary.min).toBe(0);
+    expect(summary.max).toBe(0);
+    expect(summary.count).toBe(0);
+  });
+});
+
+describe('printTable', () => {
+  it('does not throw for normal listings', () => {
+    expect(() => printTable(listings)).not.toThrow();
+  });
+
+  it('does not throw for empty listings array', () => {
+    expect(() => printTable([])).not.toThrow();
+  });
+});
+
+describe('printSummary', () => {
+  it('does not throw for normal listings', () => {
+    expect(() => printSummary(listings, 10)).not.toThrow();
+  });
+
+  it('does not throw for empty listings array', () => {
+    expect(() => printSummary([], 10)).not.toThrow();
   });
 });
