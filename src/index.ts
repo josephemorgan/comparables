@@ -3,7 +3,8 @@ import { program } from 'commander';
 import { config } from 'dotenv';
 import { decodeVin, searchInventory } from './api.js';
 import { rankListings } from './score.js';
-import { printTable, printSummary, writeCsv } from './output.js';
+import { printTable, printSummary, writeCsv, printMethodology, buildMethodologyRows } from './output.js';
+import type { RunStats } from './output.js';
 import type { SearchParams, VehicleSpec } from './types.js';
 
 config(); // load .env
@@ -161,10 +162,18 @@ async function run() {
   listings = complete;
   const ranked = rankListings(listings, params);
 
+  const stats: RunStats = {
+    totalReturned: listings.length + dropped,
+    dropped,
+    scored: ranked.length,
+  };
+
   printTable(ranked);
   printSummary(ranked, params.top);
+  printMethodology(params, stats);
 
-  writeCsv(ranked, params.outFile);
+  const methodologyRows = buildMethodologyRows(params, stats);
+  writeCsv(ranked, params.outFile, methodologyRows);
   console.log(`CSV saved to ${params.outFile}`);
 }
 

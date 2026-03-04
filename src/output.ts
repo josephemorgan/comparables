@@ -1,6 +1,12 @@
 import Table from 'cli-table3';
 import { writeFileSync } from 'fs';
-import type { ScoredListing } from './types.js';
+import type { SearchParams, ScoredListing } from './types.js';
+
+export interface RunStats {
+  totalReturned: number;
+  dropped: number;
+  scored: number;
+}
 
 const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
@@ -69,8 +75,8 @@ export function printTable(listings: ScoredListing[]): void {
   console.log(table.toString());
 }
 
-export function writeCsv(listings: ScoredListing[], filePath: string): void {
-  const rows = buildCsvRows(listings);
+export function writeCsv(listings: ScoredListing[], filePath: string, prefixRows: string[][] = []): void {
+  const rows = [...prefixRows, ...buildCsvRows(listings)];
   const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
   writeFileSync(filePath, csv, 'utf8');
 }
@@ -80,4 +86,54 @@ export function printSummary(listings: ScoredListing[], top: number): void {
   console.log(
     `\nTop ${count} average (adjusted): ${USD.format(average)}  |  Range: ${USD.format(min)} – ${USD.format(max)}\n`,
   );
+}
+
+export function buildMethodologyRows(params: SearchParams, stats: RunStats): string[][] {
+  const trimDisplay = params.trim ? ` ${params.trim}` : ' (any)';
+  return [
+    ['--- Search Methodology ---'],
+    ['Subject vehicle', `${params.year} ${params.make} ${params.model}${trimDisplay}`],
+    ['Subject mileage', params.mileage.toLocaleString()],
+    ['Search area', `${params.radius} miles of ZIP ${params.zip}`],
+    ['Year window', `${params.year - params.yearRange}–${params.year + params.yearRange}`],
+    ['Mileage window', `${(params.mileage - params.mileageRange).toLocaleString()}–${(params.mileage + params.mileageRange).toLocaleString()}`],
+    ['Mileage adj rate', `$${params.ratePerMile.toFixed(2)}/mile`],
+    ['Listings returned', String(stats.totalReturned)],
+    ['Dropped (no price/miles)', String(stats.dropped)],
+    ['Scored & ranked', String(stats.scored)],
+    ['Scoring weights', 'Distance 40pts + Mileage delta 40pts + Trim match 20pts (100pt max)'],
+    ['Adj price formula', 'Listed price − (comp miles − subject miles) × rate/mile'],
+    [],
+  ];
+}
+
+export function printMethodology(params: SearchParams, stats: RunStats): void {
+  const trimDisplay = params.trim ? ` ${params.trim}` : ' (any trim)';
+  const yearMin = params.year - params.yearRange;
+  const yearMax = params.year + params.yearRange;
+  const milesMin = (params.mileage - params.mileageRange).toLocaleString();
+  const milesMax = (params.mileage + params.mileageRange).toLocaleString();
+
+  console.log('─'.repeat(70));
+  console.log('Methodology');
+  console.log('─'.repeat(70));
+  console.log(`  Subject vehicle : ${params.year} ${params.make} ${params.model}${trimDisplay}`);
+  console.log(`  Subject mileage : ${params.mileage.toLocaleString()} miles`);
+  console.log(`  Search area     : within ${params.radius} miles of ZIP ${params.zip}`);
+  console.log(`  Year window     : ${yearMin}–${yearMax}`);
+  console.log(`  Mileage window  : ${milesMin}–${milesMax} miles`);
+  console.log(`  Adj rate        : $${params.ratePerMile.toFixed(2)} per mile`);
+  console.log();
+  console.log(`  Listings from API : ${stats.totalReturned}`);
+  console.log(`  Dropped (missing data) : ${stats.dropped}`);
+  console.log(`  Scored & ranked : ${stats.scored}`);
+  console.log();
+  console.log('  Scoring (100 pt max):');
+  console.log('    Distance score  — 40 pts, linear from 0 mi to radius limit');
+  console.log('    Mileage delta   — 40 pts, linear from exact match to ±mileage-range');
+  console.log('    Trim match      — 20 pts exact / 10 pts partial / 0 pts no match');
+  console.log();
+  console.log('  Adjusted price = Listed price − (comp miles − subject miles) × rate/mile');
+  console.log('  A positive adj means the comp has more miles → its effective price is lower.');
+  console.log('─'.repeat(70));
 }
