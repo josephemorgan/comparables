@@ -146,12 +146,19 @@ async function run() {
     process.exit(1);
   }
 
-  if (listings.length === 0) {
-    console.error('No results found. Try increasing --radius or --year-range.');
+  const complete = listings.filter(l => l.price != null && l.miles != null);
+  const dropped = listings.length - complete.length;
+  if (dropped > 0) {
+    console.log(`Skipped ${dropped} listing(s) with missing price or mileage data.`);
+  }
+
+  if (complete.length === 0) {
+    console.error('No usable results (all listings were missing price or mileage). Try increasing --radius or --year-range.');
     process.exit(1);
   }
 
-  console.log(`Found ${listings.length} listings. Scoring and ranking...\n`);
+  console.log(`Found ${complete.length} listings. Scoring and ranking...\n`);
+  listings = complete;
   const ranked = rankListings(listings, params);
 
   printTable(ranked);

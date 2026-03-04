@@ -2,12 +2,13 @@ import type { RawListing, SearchParams, ScoredListing } from './types.js';
 
 export function computeScore(listing: RawListing, params: SearchParams): number {
   // Distance component (0–40 pts)
+  const dist = listing.dist ?? 0;
   const distScore = params.radius > 0
-    ? 40 * Math.max(0, 1 - listing.dist / params.radius)
-    : listing.dist === 0 ? 40 : 0;
+    ? 40 * Math.max(0, 1 - dist / params.radius)
+    : dist === 0 ? 40 : 0;
 
   // Mileage delta component (0–40 pts)
-  const mileageDelta = Math.abs(listing.miles - params.mileage);
+  const mileageDelta = Math.abs((listing.miles ?? params.mileage) - params.mileage);
   const mileageScore = params.mileageRange > 0
     ? 40 * Math.max(0, 1 - mileageDelta / params.mileageRange)
     : mileageDelta === 0 ? 40 : 0;
@@ -40,8 +41,8 @@ export function rankListings(listings: RawListing[], params: SearchParams): Scor
       ...listing,
       score: computeScore(listing, params),
       adjustedPrice: applyMileageAdjustment(
-        listing.price,
-        listing.miles,
+        listing.price ?? 0,
+        listing.miles ?? params.mileage,
         params.mileage,
         params.ratePerMile,
       ),

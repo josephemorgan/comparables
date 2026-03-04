@@ -20,16 +20,16 @@ export interface SearchParams extends VehicleSpec {
 /** Raw listing shape from MarketCheck /v2/search/car/active */
 export interface RawListing {
   id: string;
-  price: number;
-  miles: number;
+  price?: number;   // may be absent on some listings
+  miles?: number;   // may be absent on some listings
   year: number;
   make: string;
   model: string;
   trim?: string;
   city: string;
   state: string;
-  dist: number;   // miles from search ZIP
-  vdp_url: string;
+  dist?: number;    // miles from search ZIP; may be absent
+  vdp_url?: string;
   dealer?: { name?: string };
 }
 
