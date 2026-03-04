@@ -62,6 +62,12 @@ describe('computeScore', () => {
     expect(score).toBe(80); // 40 + 40 + 0
   });
 
+  it('gives 0 trim points for a listing with no trim data', () => {
+    const listing = { ...baseListing, trim: undefined };
+    const score = computeScore(listing, baseParams);
+    expect(score).toBe(80); // 40 dist + 40 mileage + 0 trim (no trim data)
+  });
+
   it('handles mileageRange: 0 without NaN (exact mileage match = max points)', () => {
     const params = { ...baseParams, mileageRange: 0 };
     const score = computeScore(baseListing, params); // baseListing.miles === baseParams.mileage

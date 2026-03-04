@@ -18,7 +18,7 @@ export function computeScore(listing: RawListing, params: SearchParams): number 
   let trimScore = 0;
   if (targetTrim && listingTrim === targetTrim) {
     trimScore = 20;
-  } else if (targetTrim && (listingTrim.includes(targetTrim) || targetTrim.includes(listingTrim))) {
+  } else if (targetTrim && listingTrim && (listingTrim.includes(targetTrim) || targetTrim.includes(listingTrim))) {
     trimScore = 10;
   }
 
