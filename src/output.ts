@@ -71,7 +71,7 @@ export function printTable(listings: ScoredListing[]): void {
 
 export function writeCsv(listings: ScoredListing[], filePath: string): void {
   const rows = buildCsvRows(listings);
-  const csv = rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
   writeFileSync(filePath, csv, 'utf8');
 }
 

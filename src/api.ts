@@ -1,5 +1,30 @@
 import axios from 'axios';
-import type { VehicleSpec, RawListing, SearchParams, MarketCheckSearchResponse, VinDecodeResponse } from './types.js';
+import type { VehicleSpec, RawListing, SearchParams, VinDecodeResponse } from './types.js';
+
+/** Actual shape returned by MarketCheck /v2/search/car/active listings array */
+interface MCListing {
+  id: string;
+  price?: number;
+  miles?: number;
+  dist?: number;
+  vdp_url?: string;
+  build?: {
+    year?: number;
+    make?: string;
+    model?: string;
+    trim?: string;
+  };
+  dealer?: {
+    name?: string;
+    city?: string;
+    state?: string;
+  };
+}
+
+interface MCSearchResponse {
+  num_found: number;
+  listings: MCListing[];
+}
 
 const BASE = 'https://mc-api.marketcheck.com/v2';
 
@@ -28,7 +53,7 @@ export async function searchInventory(params: SearchParams): Promise<RawListing[
   const years = Array.from({ length: yearMax - yearMin + 1 }, (_, i) => yearMin + i).join(',');
 
   try {
-    const { data } = await axios.get<MarketCheckSearchResponse>(
+    const { data } = await axios.get<MCSearchResponse>(
       `${BASE}/search/car/active`,
       {
         params: {
@@ -46,7 +71,21 @@ export async function searchInventory(params: SearchParams): Promise<RawListing[
         },
       },
     );
-    return data.listings ?? [];
+    // Flatten nested build/dealer fields into our RawListing shape
+    return (data.listings ?? []).map((l): RawListing => ({
+      id: l.id,
+      price: l.price,
+      miles: l.miles,
+      dist: l.dist,
+      vdp_url: l.vdp_url,
+      year: l.build?.year ?? 0,
+      make: l.build?.make ?? '',
+      model: l.build?.model ?? '',
+      trim: l.build?.trim,
+      city: l.dealer?.city ?? '',
+      state: l.dealer?.state ?? '',
+      dealer: l.dealer,
+    }));
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       const status = err.response?.status;

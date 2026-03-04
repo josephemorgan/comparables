@@ -33,10 +33,6 @@ export interface RawListing {
   dealer?: { name?: string };
 }
 
-export interface MarketCheckSearchResponse {
-  num_found: number;
-  listings: RawListing[];
-}
 
 /** MarketCheck VIN decode response (relevant fields) */
 export interface VinDecodeResponse {
