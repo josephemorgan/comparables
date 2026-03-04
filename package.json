@@ -4,7 +4,7 @@
   "description": "Find vehicle comparables for insurance total-loss negotiation",
   "type": "module",
   "bin": {
-    "comparables": "./src/index.ts"
+    "comparables": "./bin/comparables.js"
   },
   "scripts": {
     "test": "vitest run",
