@@ -50,6 +50,45 @@ if (!apiKey) {
   process.exit(1);
 }
 
+// --- Input validation ---
+function parseIntArg(val: string, flag: string): number {
+  const n = parseInt(val, 10);
+  if (Number.isNaN(n)) {
+    console.error(`Error: --${flag} must be a whole number, got "${val}".`);
+    process.exit(1);
+  }
+  return n;
+}
+
+function parseFloatArg(val: string, flag: string): number {
+  const n = parseFloat(val);
+  if (Number.isNaN(n)) {
+    console.error(`Error: --${flag} must be a number, got "${val}".`);
+    process.exit(1);
+  }
+  return n;
+}
+
+const mileage = parseIntArg(opts.mileage, 'mileage');
+const radius = parseIntArg(opts.radius, 'radius');
+const yearRange = parseIntArg(opts.yearRange, 'year-range');
+const mileageRange = parseIntArg(opts.mileageRange, 'mileage-range');
+const top = parseIntArg(opts.top, 'top');
+const ratePerMile = parseFloatArg(opts.rate, 'rate');
+
+if (mileage <= 0) { console.error('Error: --mileage must be greater than 0.'); process.exit(1); }
+if (radius <= 0) { console.error('Error: --radius must be greater than 0.'); process.exit(1); }
+if (yearRange <= 0) { console.error('Error: --year-range must be greater than 0.'); process.exit(1); }
+if (mileageRange <= 0) { console.error('Error: --mileage-range must be greater than 0.'); process.exit(1); }
+if (top <= 0) { console.error('Error: --top must be greater than 0.'); process.exit(1); }
+if (ratePerMile < 0) { console.error('Error: --rate must be 0 or greater.'); process.exit(1); }
+
+// ZIP code basic format check
+if (!/^\d{5}(-\d{4})?$/.test(opts.zip)) {
+  console.error(`Error: --zip must be a 5-digit US ZIP code, got "${opts.zip}".`);
+  process.exit(1);
+}
+
 async function run() {
   let spec: VehicleSpec;
 
@@ -57,7 +96,7 @@ async function run() {
     console.log(`Decoding VIN ${opts.vin}...`);
     try {
       spec = await decodeVin(opts.vin, apiKey!);
-      console.log(`  → ${spec.year} ${spec.make} ${spec.model} ${spec.trim}`);
+      console.log(`  → ${spec.year} ${spec.make} ${spec.model}${spec.trim ? ' ' + spec.trim : ''}`);
     } catch (err) {
       console.error(`VIN decode failed: ${(err as Error).message}`);
       console.error('Please provide --year, --make, --model, --trim manually.');
@@ -68,8 +107,14 @@ async function run() {
       console.error('Error: Provide either --vin or all of --year, --make, --model.');
       process.exit(1);
     }
+    const year = parseIntArg(opts.year, 'year');
+    const currentYear = new Date().getFullYear();
+    if (year < 1900 || year > currentYear + 2) {
+      console.error(`Error: --year must be between 1900 and ${currentYear + 2}, got "${opts.year}".`);
+      process.exit(1);
+    }
     spec = {
-      year: parseInt(opts.year, 10),
+      year,
       make: opts.make,
       model: opts.model,
       trim: opts.trim ?? '',
@@ -78,18 +123,19 @@ async function run() {
 
   const params: SearchParams = {
     ...spec,
-    mileage: parseInt(opts.mileage, 10),
+    mileage,
     zip: opts.zip,
-    radius: parseInt(opts.radius, 10),
-    yearRange: parseInt(opts.yearRange, 10),
-    mileageRange: parseInt(opts.mileageRange, 10),
-    top: parseInt(opts.top, 10),
+    radius,
+    yearRange,
+    mileageRange,
+    top,
     outFile: opts.out,
-    ratePerMile: parseFloat(opts.rate),
+    ratePerMile,
     apiKey: apiKey!,
   };
 
-  console.log(`\nSearching for ${spec.year}±${params.yearRange} ${spec.make} ${spec.model} ${spec.trim} within ${params.radius} miles of ${params.zip}...`);
+  const trimDisplay = spec.trim ? ` ${spec.trim}` : '';
+  console.log(`\nSearching for ${spec.year}±${params.yearRange} ${spec.make} ${spec.model}${trimDisplay} within ${params.radius} miles of ${params.zip}...`);
 
   let listings;
   try {
@@ -115,6 +161,6 @@ async function run() {
 }
 
 run().catch((err) => {
-  console.error(err);
+  console.error(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });
