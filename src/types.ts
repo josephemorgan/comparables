@@ -25,7 +25,7 @@ export interface RawListing {
   year: number;
   make: string;
   model: string;
-  trim: string;
+  trim?: string;
   city: string;
   state: string;
   dist: number;   // miles from search ZIP

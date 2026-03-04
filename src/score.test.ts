@@ -61,18 +61,35 @@ describe('computeScore', () => {
     const score = computeScore(listing, baseParams);
     expect(score).toBe(80); // 40 + 40 + 0
   });
+
+  it('handles mileageRange: 0 without NaN (exact mileage match = max points)', () => {
+    const params = { ...baseParams, mileageRange: 0 };
+    const score = computeScore(baseListing, params); // baseListing.miles === baseParams.mileage
+    expect(Number.isNaN(score)).toBe(false);
+    expect(score).toBe(100);
+  });
+
+  it('handles mileageRange: 0 without NaN (different mileage = 0 pts)', () => {
+    const params = { ...baseParams, mileageRange: 0 };
+    const listing = { ...baseListing, miles: 60000 };
+    const score = computeScore(listing, params);
+    expect(Number.isNaN(score)).toBe(false);
+    expect(score).toBe(60); // 40 dist + 0 mileage + 20 trim
+  });
 });
 
 describe('applyMileageAdjustment', () => {
-  it('raises price when comp has more miles than subject', () => {
+  it('lowers adjusted price when comp has more miles than subject', () => {
     // comp has 65k miles, subject has 55k → 10k extra miles
+    // comp is worth less at those miles, so adjusted price is lower
     // adjusted = 24000 - (65000 - 55000) * 0.10 = 24000 - 1000 = 23000
     const adjusted = applyMileageAdjustment(24000, 65000, 55000, 0.10);
     expect(adjusted).toBe(23000);
   });
 
-  it('lowers price when comp has fewer miles than subject', () => {
+  it('raises adjusted price when comp has fewer miles than subject', () => {
     // comp has 45k miles, subject has 55k → -10k delta
+    // comp is worth more at fewer miles, so adjusted price is higher
     // adjusted = 24000 - (45000 - 55000) * 0.10 = 24000 + 1000 = 25000
     const adjusted = applyMileageAdjustment(24000, 45000, 55000, 0.10);
     expect(adjusted).toBe(25000);
@@ -94,6 +111,7 @@ describe('rankListings', () => {
     const ranked = rankListings(listings, baseParams);
     expect(ranked[0].id).toBe('b');
     expect(ranked[0].rank).toBe(1);
+    expect(ranked[0].adjustedPrice).toBe(24000);
     expect(ranked[1].id).toBe('a');
     expect(ranked[1].rank).toBe(2);
     expect(ranked[2].id).toBe('c');

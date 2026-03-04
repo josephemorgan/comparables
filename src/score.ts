@@ -2,11 +2,15 @@ import type { RawListing, SearchParams, ScoredListing } from './types.js';
 
 export function computeScore(listing: RawListing, params: SearchParams): number {
   // Distance component (0–40 pts)
-  const distScore = 40 * Math.max(0, 1 - listing.dist / params.radius);
+  const distScore = params.radius > 0
+    ? 40 * Math.max(0, 1 - listing.dist / params.radius)
+    : listing.dist === 0 ? 40 : 0;
 
   // Mileage delta component (0–40 pts)
   const mileageDelta = Math.abs(listing.miles - params.mileage);
-  const mileageScore = 40 * Math.max(0, 1 - mileageDelta / params.mileageRange);
+  const mileageScore = params.mileageRange > 0
+    ? 40 * Math.max(0, 1 - mileageDelta / params.mileageRange)
+    : mileageDelta === 0 ? 40 : 0;
 
   // Trim match component (0–20 pts)
   const listingTrim = listing.trim?.toLowerCase() ?? '';
@@ -14,7 +18,7 @@ export function computeScore(listing: RawListing, params: SearchParams): number 
   let trimScore = 0;
   if (targetTrim && listingTrim === targetTrim) {
     trimScore = 20;
-  } else if (targetTrim && listingTrim.includes(targetTrim)) {
+  } else if (targetTrim && (listingTrim.includes(targetTrim) || targetTrim.includes(listingTrim))) {
     trimScore = 10;
   }
 
